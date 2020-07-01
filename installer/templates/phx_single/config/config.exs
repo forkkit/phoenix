@@ -5,7 +5,7 @@
 # is restricted to this project.
 
 # General application configuration
-use Mix.Config<%= if namespaced? || ecto || generators do %>
+import Config<%= if namespaced? || ecto || generators do %>
 
 config :<%= app_name %><%= if namespaced? do %>,
   namespace: <%= app_module %><% end %><%= if ecto do %>,
@@ -17,7 +17,8 @@ config :<%= app_name %>, <%= endpoint_module %>,
   url: [host: "localhost"],
   secret_key_base: "<%= secret_key_base %>",
   render_errors: [view: <%= web_namespace %>.ErrorView, accepts: ~w(<%= if html do %>html <% end %>json), layout: false],
-  pubsub_server: <%= app_module %>.PubSub
+  pubsub_server: <%= app_module %>.PubSub,
+  live_view: [signing_salt: "<%= lv_signing_salt %>"]
 
 # Configures Elixir's Logger
 config :logger, :console,

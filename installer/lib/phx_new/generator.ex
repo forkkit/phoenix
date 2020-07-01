@@ -4,7 +4,7 @@ defmodule Phx.New.Generator do
   alias Phx.New.{Project}
 
   @phoenix Path.expand("../..", __DIR__)
-  @phoenix_version Version.parse!("1.4.0")
+  @phoenix_version Version.parse!(Mix.Project.config()[:version])
 
   @callback prepare_project(Project.t) :: Project.t
   @callback generate(Project.t) :: Project.t
@@ -71,7 +71,7 @@ defmodule Phx.New.Generator do
     contents =
       case File.read(file) do
         {:ok, bin} -> bin
-        {:error, _} -> "use Mix.Config\n"
+        {:error, _} -> "import Config\n"
       end
 
     with :error <- split_with_self(contents, "use Mix.Config\n"),
@@ -110,6 +110,8 @@ defmodule Phx.New.Generator do
     db           = Keyword.get(opts, :database, "postgres")
     ecto         = Keyword.get(opts, :ecto, true)
     html         = Keyword.get(opts, :html, true)
+    live         = Keyword.get(opts, :live, false)
+    dashboard    = Keyword.get(opts, :dashboard, true)
     gettext      = Keyword.get(opts, :gettext, true)
     webpack      = Keyword.get(opts, :webpack, true)
     dev          = Keyword.get(opts, :dev, false)
@@ -147,14 +149,18 @@ defmodule Phx.New.Generator do
       phoenix_path: phoenix_path,
       phoenix_webpack_path: phoenix_webpack_path(project, dev),
       phoenix_html_webpack_path: phoenix_html_webpack_path(project),
+      phoenix_live_view_webpack_path: phoenix_live_view_webpack_path(project),
       phoenix_static_path: phoenix_static_path(phoenix_path),
       pubsub_server: pubsub_server,
       secret_key_base: random_string(64),
       signing_salt: random_string(8),
+      lv_signing_salt: random_string(8),
       in_umbrella: project.in_umbrella?,
       webpack: webpack,
       ecto: ecto,
       html: html,
+      live: live,
+      dashboard: dashboard,
       gettext: gettext,
       adapter_app: adapter_app,
       adapter_module: adapter_module,
@@ -185,6 +191,10 @@ defmodule Phx.New.Generator do
 
     config_inject project_path, "config/test.exs", """
     # Configure your database
+    #
+    # The MIX_TEST_PARTITION environment variable can be used
+    # to provide built-in test partitioning in CI environment.
+    # Run `mix help test` for more information.
     config :#{binding[:app_name]}, #{binding[:app_module]}.Repo#{kw_to_config adapter_config[:test]}
     """
 
@@ -210,6 +220,9 @@ defmodule Phx.New.Generator do
     |> Module.concat(PubSub)
   end
 
+  defp get_ecto_adapter("mssql", app, module) do
+    {:tds, Ecto.Adapters.Tds, db_config(app, module, "sa", "some!Password")}
+  end
   defp get_ecto_adapter("mysql", app, module) do
     {:myxql, Ecto.Adapters.MyXQL, db_config(app, module, "root", "")}
   end
@@ -220,19 +233,34 @@ defmodule Phx.New.Generator do
     Mix.raise "Unknown database #{inspect db}"
   end
 
-  defp db_config(app, module, user, pass) do
-    [dev:  [username: user, password: pass, database: "#{app}_dev", hostname: "localhost",
-            show_sensitive_data_on_connection_error: true],
-     test: [username: user, password: pass, database: "#{app}_test", hostname: "localhost",
-            pool: Ecto.Adapters.SQL.Sandbox],
-     test_setup_all: "Ecto.Adapters.SQL.Sandbox.mode(#{inspect module}.Repo, :manual)",
-     test_setup: ":ok = Ecto.Adapters.SQL.Sandbox.checkout(#{inspect module}.Repo)",
-     test_async: "Ecto.Adapters.SQL.Sandbox.mode(#{inspect module}.Repo, {:shared, self()})"]
-  end
+defp db_config(app, module, user, pass) do
+  [
+    dev: [
+      username: user,
+      password: pass,
+      database: "#{app}_dev",
+      hostname: "localhost",
+      show_sensitive_data_on_connection_error: true
+    ],
+    test: [
+      username: user,
+      password: pass,
+      database: {:literal, ~s|"#{app}_test\#{System.get_env("MIX_TEST_PARTITION")}"|},
+      hostname: "localhost",
+      pool: Ecto.Adapters.SQL.Sandbox
+    ],
+    test_setup_all: "Ecto.Adapters.SQL.Sandbox.mode(#{inspect(module)}.Repo, :manual)",
+    test_setup: """
+        pid = Ecto.Adapters.SQL.Sandbox.start_owner!(#{inspect(module)}.Repo, shared: not tags[:async])
+        on_exit(fn -> Ecto.Adapters.SQL.Sandbox.stop_owner(pid) end)\
+    """
+  ]
+end
 
   defp kw_to_config(kw) do
-    Enum.map(kw, fn {k, v} ->
-      ",\n  #{k}: #{inspect v}"
+    Enum.map(kw, fn
+      {k, {:literal, v}} -> ",\n  #{k}: #{v}"
+      {k, v} -> ",\n  #{k}: #{inspect v}"
     end)
   end
 
@@ -279,6 +307,11 @@ defmodule Phx.New.Generator do
     do: "../../../deps/phoenix_html"
   defp phoenix_html_webpack_path(%Project{in_umbrella?: false}),
     do: "../deps/phoenix_html"
+
+  defp phoenix_live_view_webpack_path(%Project{in_umbrella?: true}),
+    do: "../../../deps/phoenix_live_view"
+  defp phoenix_live_view_webpack_path(%Project{in_umbrella?: false}),
+    do: "../deps/phoenix_live_view"
 
   defp phoenix_dep("deps/phoenix"), do: ~s[{:phoenix, "~> #{@phoenix_version}"}]
   # defp phoenix_dep("deps/phoenix"), do: ~s[{:phoenix, github: "phoenixframework/phoenix", override: true}]

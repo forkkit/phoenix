@@ -62,7 +62,7 @@ defmodule Phoenix.Integration.LongPollChannelsTest do
       address = Tuple.to_list(connect_info.peer_data.address) |> Enum.join(".")
       uri = Map.from_struct(connect_info.uri)
       x_headers = Enum.into(connect_info.x_headers, %{})
-      
+
       connect_info =
         connect_info
         |> update_in([:peer_data], &Map.put(&1, :address, address))
@@ -89,6 +89,10 @@ defmodule Phoenix.Integration.LongPollChannelsTest do
 
     def connect(%{"reject" => "true"}, _socket) do
       :error
+    end
+
+    def connect(%{"custom_error" => "true"}, _socket) do
+      {:error, :custom}
     end
 
     def connect(params, socket) do
@@ -335,7 +339,7 @@ defmodule Phoenix.Integration.LongPollChannelsTest do
         topic: "room:lobby"
       }
 
-      # Publish unauthorized event
+      # Publish event to an unjoined room
       capture_log fn ->
         Phoenix.PubSub.subscribe(__MODULE__, "room:private-room")
         resp = poll :post, "/ws", @vsn, session, %{
@@ -344,8 +348,19 @@ defmodule Phoenix.Integration.LongPollChannelsTest do
           "ref" => "12300",
           "payload" => %{"body" => "this method shouldn't send!'"}
         }
-        assert resp.body["status"] == 401
+        assert resp.body["status"] == 200
         refute_receive %Broadcast{event: "new_msg"}
+
+        # Get join error
+        resp = poll(:get, "/ws", @vsn, session)
+        assert resp.body["status"] == 200
+        assert List.last(resp.body["messages"]) == %Message{
+          join_ref: nil,
+          event: "phx_reply",
+          payload: %{"response" => %{"reason" => "unmatched topic"}, "status" => "error"},
+          ref: "12300",
+          topic: "room:private-room"
+        }
       end
     end
 
@@ -369,6 +384,9 @@ defmodule Phoenix.Integration.LongPollChannelsTest do
     describe "with #{vsn} serializer #{inspect serializer}" do
       test "refuses connects that error with 403 response" do
         resp = poll :get, "/ws", @vsn, %{"reject" => "true"}, %{}
+        assert resp.body["status"] == 403
+
+        resp = poll :get, "/ws", @vsn, %{"custom_error" => "true"}, %{}
         assert resp.body["status"] == 403
       end
 

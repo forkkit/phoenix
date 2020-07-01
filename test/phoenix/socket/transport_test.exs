@@ -8,13 +8,35 @@ defmodule Phoenix.Socket.TransportTest do
 
   alias Phoenix.Socket.Transport
 
+  @secret_key_base String.duplicate("abcdefgh", 8)
+
   Application.put_env :phoenix, __MODULE__.Endpoint,
     force_ssl: [],
     url: [host: {:system, "TRANSPORT_TEST_HOST"}],
-    check_origin: ["//endpoint.com"]
+    check_origin: ["//endpoint.com"],
+    secret_key_base: @secret_key_base
 
   defmodule Endpoint do
     use Phoenix.Endpoint, otp_app: :phoenix
+
+    @session_config [
+      store: :cookie,
+      key: "_hello_key",
+      signing_salt: "change_me"
+    ]
+
+    def session_config, do: @session_config
+
+    plug Plug.Session, @session_config
+    plug :fetch_session
+    plug Plug.CSRFProtection
+    plug :put_session
+
+    defp put_session(conn, _) do
+      conn
+      |> put_session(:from_session, "123")
+      |> send_resp(200, Plug.CSRFProtection.get_csrf_token())
+    end
   end
 
   setup_all do
@@ -99,6 +121,7 @@ defmodule Phoenix.Socket.TransportTest do
     end
 
     def invalid_allowed?(%URI{host: nil}), do: true
+    def invalid_allowed?(%URI{host: ""}), do: true
 
     test "allows custom MFA check to handle invalid host" do
       mfa = {__MODULE__, :invalid_allowed?, []}
@@ -234,6 +257,27 @@ defmodule Phoenix.Socket.TransportTest do
       # Valid
       conn = Transport.force_ssl(conn(:get, "https://foo.com/"), make_ref(), Endpoint, [])
       refute conn.halted
+    end
+  end
+
+  describe "connect_info/3" do
+    defp load_connect_info(connect_info) do
+      [connect_info: connect_info] = Transport.load_config(connect_info: connect_info)
+      connect_info
+    end
+
+    test "loads the session from MFA" do
+      conn = conn(:get, "https://foo.com/") |> Endpoint.call([])
+      csrf_token = conn.resp_body
+      session_cookie = conn.cookies["_hello_key"]
+
+      connect_info = load_connect_info(session: {Endpoint, :session_config, []})
+
+      assert %{session: %{"from_session" => "123"}} =
+               conn(:get, "https://foo.com/", _csrf_token: csrf_token)
+               |> put_req_cookie("_hello_key", session_cookie)
+               |> fetch_query_params()
+               |> Transport.connect_info(Endpoint, connect_info)
     end
   end
 end

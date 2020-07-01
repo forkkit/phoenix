@@ -1,13 +1,13 @@
 # Mix Tasks
 
-There are currently a number of built-in Phoenix-specific and ecto-specific mix tasks available to us within a newly-generated application. We can also create our own application specific tasks.
+There are currently a number of built-in Phoenix-specific and Ecto-specific mix tasks available to us within a newly-generated application. We can also create our own application specific tasks.
 
-> Note to learn more about `mix` read the [Introduction to Mix](https://elixir-lang.org/getting-started/mix-otp/introduction-to-mix.html).
+> Note to learn more about `mix`, you can read Elixir's official [Introduction to Mix](https://elixir-lang.org/getting-started/mix-otp/introduction-to-mix.html).
 
-## Phoenix Specific Mix Tasks
+## Phoenix tasks
 
 ```console
-➜ mix help | grep -i phx
+➜ mix help --search "phx"
 mix local.phx          # Updates the Phoenix project generator locally
 mix phx                # Prints Phoenix help information
 mix phx.digest         # Digests and compresses static files
@@ -28,168 +28,13 @@ mix phx.routes         # Prints all routes
 mix phx.server         # Starts applications and their servers
 ```
 
-We have seen all of these at one point or another in the guides, but having all the information about them in one place seems like a good idea. And here we are.
+We have seen all of these at one point or another in the guides, but having all the information about them in one place seems like a good idea.
 
-### `mix phx.new`
-
-This is how we tell Phoenix the framework to generate a new Phoenix application for us. We saw it early on in the [Up and Running Guide](up_and_running.html).
-
-Before we begin, we should note that Phoenix uses [Ecto](https://github.com/elixir-lang/ecto) for database access and [webpack](https://webpack.js.org/) for asset management by default. We can pass `--no-ecto` to opt out of Ecto and  `--no-webpack` to opt out of webpack.
-
-> Note: If we do use webpack, we need to install its dependencies before we start our application. `mix phx.new` will ask to do this for us. Otherwise, we can install them with `npm install`. If we don't install them, the app will throw errors and may not serve our assets properly.
-
-We need to pass a name for our application to `mix phx.new`. Conventionally, we use all lower-case letters with underscores.
-
-```console
-$ mix phx.new task_tester
-* creating task_tester/.gitignore
-. . .
-```
-
-We can also use either a relative or absolute path.
-
-This relative path works.
-
-```console
-$ mix phx.new ../task_tester
-* creating ../task_tester/.gitignore
-. . .
-```
-
-This absolute path works as well.
-
-```console
-$ mix phx.new /Users/me/work/task_tester
-* creating /Users/me/work/task_tester/.gitignore
-. . .
-```
-
-The `mix phx.new` task will also ask us if we want to install our dependencies. (Please see the note above about webpack dependencies.)
-
-```console
-Fetch and install dependencies? [Yn] y
-* cd assets && npm install && node node_modules/webpack/bin/webpack.js --mode development
-* running mix deps.get
-```
-
-Once all of our dependencies are installed, `mix phx.new` will tell us what our next steps are.
-
-```console
-We are all set! Run your Phoenix application:
-
-$ cd task_tester
-$ mix phx.server
-
-You can also run it inside IEx (Interactive Elixir) as:
-
-$ iex -S mix phx.server
-```
-
-By default `mix phx.new` will assume we want to use ecto for our contexts. If we don't want to use ecto in our application, we can use the `--no-ecto` flag.
-
-```console
-$ mix phx.new task_tester --no-ecto
-* creating task_tester/.gitignore
-. . .
-```
-
-With the `--no-ecto` flag, Phoenix will not make either ecto or postgrex a dependency of our application, and it will not create a `repo.ex` file.
-
-By default, Phoenix will name our OTP application after the name we pass into `mix phx.new`. If we want, we can specify a different OTP application name with the `--app` flag.
-
-```console
-$  mix phx.new task_tester --app hello
-* creating task_tester/config/config.exs
-* creating task_tester/config/dev.exs
-* creating task_tester/config/prod.exs
-* creating task_tester/config/prod.secret.exs
-* creating task_tester/config/test.exs
-* creating task_tester/lib/hello/application.ex
-* creating task_tester/lib/hello.ex
-* creating task_tester/lib/hello_web/channels/user_socket.ex
-* creating task_tester/lib/hello_web/views/error_helpers.ex
-* creating task_tester/lib/hello_web/views/error_view.ex
-* creating task_tester/lib/hello_web/endpoint.ex
-* creating task_tester/lib/hello_web/router.ex
-* creating task_tester/lib/hello_web.ex
-* creating task_tester/mix.exs
-. . .
-```
-
-If we look in the resulting `mix.exs` file, we will see that our project app name is `hello`.
-
-```elixir
-defmodule Hello.MixProject do
-  use Mix.Project
-
-  def project do
-    [app: :hello,
-     version: "0.1.0",
-. . .
-```
-
-A quick check will show that all of our module names are qualified with `Hello`.
-
-```elixir
-defmodule HelloWeb.PageController do
-  use HelloWeb, :controller
-. . .
-```
-
-We can also see that files related to the application as a whole - eg. files in `lib/` and the test seed file - have `hello` in their names.
-
-```console
-* creating task_tester/lib/hello.ex
-* creating task_tester/lib/hello_web/endpoint.ex
-* creating task_tester/lib/hello/repo.ex
-```
-
-If we only want to change the qualifying prefix for module names, we can do that with the `--module` flag. It's important to note that the value of the `--module` must look like a valid module name with proper capitalization. The task will throw an error if it doesn't.
-
-```console
-$  mix phx.new task_tester --module Hello
-* creating task_tester/config/config.exs
-* creating task_tester/config/dev.exs
-* creating task_tester/config/prod.exs
-* creating task_tester/config/prod.secret.exs
-* creating task_tester/config/test.exs
-* creating task_tester/lib/task_tester/application.ex
-* creating task_tester/lib/task_tester.ex
-* creating task_tester/lib/task_tester_web/channels/user_socket.ex
-* creating task_tester/lib/task_tester_web/views/error_helpers.ex
-* creating task_tester/lib/task_tester_web/views/error_view.ex
-* creating task_tester/lib/task_tester_web/endpoint.ex
-* creating task_tester/lib/task_tester_web/router.ex
-* creating task_tester/lib/task_tester_web.ex
-* creating task_tester/mix.exs
-* creating task_tester/README.md
-* creating task_tester/.gitignore
-* creating task_tester/test/support/channel_case.ex
-* creating task_tester/test/support/conn_case.ex
-* creating task_tester/test/test_helper.exs
-* creating task_tester/test/task_tester_web/views/error_view_test.exs
-* creating task_tester/lib/task_tester_web/gettext.ex
-* creating task_tester/priv/gettext/en/LC_MESSAGES/errors.po
-* creating task_tester/priv/gettext/errors.pot
-* creating task_tester/lib/task_tester/repo.ex
-```
-
-Notice that none of the files have `hello` in their names. All filenames related to the application name are `task_tester`.
-
-If we look at the project app name in `mix.exs`, we see that it is `task_tester`, but all the module qualifying names begin with `Hello`.
-
-```elixir
-defmodule Hello.MixProject do
-  use Mix.Project
-
-  def project do
-    [app: :task_tester,
-. . .
-```
+We will cover all Phoenix Mix tasks, except `phx.new`, `phx.new.ecto`, and `phx.new.web`, which are part of the Phoenix installer. You can learn more about them or any other task by calling `mix help TASK`.
 
 ### `mix phx.gen.html`
 
-Phoenix now offers the ability to generate all the code to stand up a complete HTML resource - ecto migration, ecto context, controller with all the necessary actions, view, and templates. This can be a tremendous timesaver. Let's take a look at how to make this happen.
+Phoenix offers the ability to generate all the code to stand up a complete HTML resource - ecto migration, ecto context, controller with all the necessary actions, view, and templates. This can be a tremendous timesaver. Let's take a look at how to make this happen.
 
 The `mix phx.gen.html` task takes a number of arguments, the module name of the context, the module name of the schema, the resource name, and a list of column_name:type attributes. The module name we pass in must conform to the Elixir rules of module naming, following proper capitalization.
 
@@ -230,7 +75,7 @@ $ mix phx.server
 Compiling 17 files (.ex)
 
 warning: function HelloWeb.Router.Helpers.post_path/3 is undefined or private
-  lib/hello_web/controllers/post_controller.ex:22: 
+  lib/hello_web/controllers/post_controller.ex:22:
 ```
 
 If we don't want to create a context or schema for our resource we can use the `--no-context` flag. Note that this still requires a context module name as a parameter.
@@ -255,16 +100,6 @@ Add the resource to your browser scope in lib/hello_web/router.ex:
     resources "/posts", PostController
 ```
 
-Important: If we don't do this, we'll get the following warning in our logs and the application will error when attempting to load the page:
-
-```console
-$ mix phx.server
-Compiling 15 files (.ex)
-
-warning: function HelloWeb.Router.Helpers.post_path/3 is undefined or private
-  lib/hello_web/templates/post/edit.html.eex:3
-```
-
 Similarly - if we want a context created without a schema for our resource we can use the `--no-schema` flag.
 
 ```console
@@ -284,22 +119,6 @@ $ mix phx.gen.html Blog Post posts body:string word_count:integer --no-schema
 ```
 
 It will tell us we need to add a line to our router file, but since we skipped the schema, it won't mention anything about `ecto.migrate`.
-
-```console
-Add the resource to your browser scope in lib/hello_web/router.ex:
-
-    resources "/posts", PostController
-```
-
-Important: If we don't do this, we'll get the following warning in our logs and the application will error when attempting to load the page:
-
-```console
-$ mix phx.server
-Compiling 15 files (.ex)
-
-warning: function HelloWeb.Router.Helpers.post_path/3 is undefined or private
-  lib/hello_web/templates/post/edit.html.eex:3
-```
 
 ### `mix phx.gen.json`
 
@@ -329,7 +148,6 @@ Add the resource to your :api scope in lib/hello_web/router.ex:
 
     resources "/posts", PostController, except: [:new, :edit]
 
-
 Remember to update your repository by running migrations:
 
     $ mix ecto.migrate
@@ -345,75 +163,7 @@ warning: function HelloWeb.Router.Helpers.post_path/3 is undefined or private
   lib/hello_web/controllers/post_controller.ex:18
 ```
 
-If we don't want to create a context or schema for our resource we can use the `--no-context` flag. Note that this still requires a context module name as a parameter.
-
-```console
-$ mix phx.gen.json Blog Post posts title:string content:string --no-context
-* creating lib/hello_web/controllers/post_controller.ex
-* creating lib/hello_web/views/post_view.ex
-* creating test/hello_web/controllers/post_controller_test.exs
-* creating lib/hello_web/views/changeset_view.ex
-* creating lib/hello_web/controllers/fallback_controller.ex
-```
-
-It will tell us we need to add a line to our router file, but since we skipped the context, it won't mention anything about `ecto.migrate`.
-
-```console
-Add the resource to your :api scope in lib/hello_web/router.ex:
-
-    resources "/posts", PostController, except: [:new, :edit]
-```
-
-Important: If we don't do this, our application won't compile, and we'll get an error.
-
-```console
-$ mix phx.server
-Compiling 17 files (.ex)
-
-== Compilation error in file lib/hello_web/controllers/post_controller.ex ==
-** (CompileError) lib/hello_web/controllers/post_controller.ex:15: Hello.Blog.Post.__struct__/0 is undefined, cannot expand struct Hello.Blog.Post
-    (stdlib) lists.erl:1354: :lists.mapfoldl/3
-    (stdlib) lists.erl:1355: :lists.mapfoldl/3
-    (stdlib) lists.erl:1354: :lists.mapfoldl/3
-    lib/hello_web/controllers/post_controller.ex:14: (module)
-    (stdlib) erl_eval.erl:670: :erl_eval.do_apply/6
-```
-
-Similarly - if we want a context created without a schema for our resource we can use the `--no-schema` flag.
-
-```console
-$ mix phx.gen.json Blog Post posts title:string content:string --no-schema
-* creating lib/hello_web/controllers/post_controller.ex
-* creating lib/hello_web/views/post_view.ex
-* creating test/hello_web/controllers/post_controller_test.exs
-* creating lib/hello_web/views/changeset_view.ex
-* creating lib/hello_web/controllers/fallback_controller.ex
-* creating lib/hello/blog.ex
-* injecting lib/hello/blog.ex
-* creating test/hello/blog/blog_test.exs
-* injecting test/hello/blog/blog_test.exs
-```
-
-It will tell us we need to add a line to our router file, but since we skipped the context, it won't mention anything about `ecto.migrate`.
-
-```console
-Add the resource to your browser scope in lib/hello_web/router.ex:
-
-    resources "/posts", PostController
-```
-
-Important: If we don't do this, our application won't compile, and we'll get an error.
-
-```console
-$ mix phx.server
-Compiling 18 files (.ex)
-
-== Compilation error in file lib/hello/blog.ex ==
-** (CompileError) lib/hello/blog.ex:65: Hello.Blog.Post.__struct__/0 is undefined, cannot expand struct Hello.Blog.Post
-    lib/hello/blog.ex:65: (module)
-    (stdlib) erl_eval.erl:670: :erl_eval.do_apply/6
-    (elixir) lib/kernel/parallel_compiler.ex:121: anonymous fn/4 in Kernel.ParallelCompiler.spawn_compilers/1
-```
+`mix phx.new.json` also supports `--no-context`, `--no-schema`, and others, as in `mix phx.new.html`.
 
 ### `mix phx.gen.context`
 
@@ -544,7 +294,7 @@ And then `assets/` which should look similar to this:
 
 ```console
 ├── css
-│   └── app.css
+│   └── app.scss
 ├── js
 │   └── app.js
 ├── vendor
@@ -572,28 +322,34 @@ config :phoenix, :gzippable_exts, ~w(.js .css)
 ```
 
 > Note: We can specify a different output folder where `mix phx.digest` will put processed files. The first argument is the path where the static files are located.
+
 ```console
 $ mix phx.digest priv/static -o www/public
 Check your digested files at 'www/public'.
 ```
 
-## Ecto Specific Mix Tasks
+## Ecto tasks
 
 Newly generated Phoenix applications now include ecto and postgrex as dependencies by default (which is to say, unless we use `mix phx.new` with the `--no-ecto` flag). With those dependencies come mix tasks to take care of common ecto operations. Let's see which tasks we get out of the box.
 
 ```console
-$ mix help | grep -i ecto
-mix ecto.create          # Create the storage for the repo
-mix ecto.drop            # Drop the storage for the repo
-mix ecto.gen.migration   # Generate a new migration for the repo
-mix ecto.gen.repo        # Generates a new repository
-mix ecto.migrate         # Runs migrations up on a repo
-mix ecto.rollback        # Reverts migrations down on a repo
+$ mix help --search "ecto"
+mix ecto               # Prints Ecto help information
+mix ecto.create        # Creates the repository storage
+mix ecto.drop          # Drops the repository storage
+mix ecto.dump          # Dumps the repository database structure
+mix ecto.gen.migration # Generates a new migration for the repo
+mix ecto.gen.repo      # Generates a new repository
+mix ecto.load          # Loads previously dumped database structure
+mix ecto.migrate       # Runs the repository migrations
+mix ecto.migrations    # Displays the repository migration status
+mix ecto.rollback      # Rolls back the repository migrations
 ```
 
 Note: We can run any of the tasks above with the `--no-start` flag to execute the task without starting the application.
 
 ### `mix ecto.create`
+
 This task will create the database specified in our repo. By default it will look for the repo named after our application (the one generated with our app unless we opted out of ecto), but we can pass in another repo if we want.
 
 Here's what it looks like in action.
@@ -601,13 +357,6 @@ Here's what it looks like in action.
 ```console
 $ mix ecto.create
 The database for Hello.Repo has been created.
-```
-
-If we happen to have another repo called `OurCustom.Repo` that we want to create the database for, we can run this.
-
-```console
-$ mix ecto.create -r OurCustom.Repo
-The database for OurCustom.Repo has been created.
 ```
 
 There are a few things that can go wrong with `ecto.create`. If our Postgres database doesn't have a "postgres" role (user), we'll get an error like this one.
@@ -661,6 +410,13 @@ $ mix ecto.create
 
 To fix this, we can change the password in the environment specific configuration file. For the development environment the password used can be found at the bottom of the `config/dev.exs` file.
 
+Finally, if we happen to have another repo called `OurCustom.Repo` that we want to create the database for, we can run this.
+
+```console
+$ mix ecto.create -r OurCustom.Repo
+The database for OurCustom.Repo has been created.
+```
+
 ### `mix ecto.drop`
 
 This task will drop the database specified in our repo. By default it will look for the repo named after our application (the one generated with our app unless we opted out of ecto). It will not prompt us to check if we're sure we want to drop the db, so do exercise caution.
@@ -691,7 +447,11 @@ $ mix ecto.gen.repo -r OurCustom.Repo
 Don't forget to add your new repo to your supervision tree
 (typically in lib/hello.ex):
 
-worker(OurCustom.Repo, [])
+    children = [
+      ...,
+      OurCustom.Repo,
+      ...
+    ]
 ```
 
 Notice that this task has updated `config/config.exs`. If we take a look, we'll see this extra configuration block for our new repo.
@@ -699,10 +459,10 @@ Notice that this task has updated `config/config.exs`. If we take a look, we'll 
 ```elixir
 . . .
 config :hello, OurCustom.Repo,
-database: "hello_repo",
-username: "user",
-password: "pass",
-hostname: "localhost"
+  database: "hello_repo",
+  username: "user",
+  password: "pass",
+  hostname: "localhost"
 . . .
 ```
 
@@ -715,12 +475,10 @@ We certainly should follow the instructions and add our new repo to our supervis
 children = [
   # Start the Ecto repository
   Hello.Repo,
+  # Our custom repo
+  OurCustom.Repo,
   # Start the endpoint when the application starts
   HelloWeb.Endpoint,
-  # Starts a worker by calling: Hello.Worker.start_link(arg)
-  # {Hello.Worker, arg},
-  # Here you could define other workers and supervisors as children
-  OurCustom.Repo
 ]
 . . .
 ```
@@ -729,7 +487,7 @@ children = [
 
 Migrations are a programmatic, repeatable way to affect changes to a database schema. Migrations are also just modules, and we can create them with the `ecto.gen.migration` task. Let's walk through the steps to create a migration for a new comments table.
 
-We simply need to invoke the task with a snake_case version of the module name that we want. Preferably, the name will describe what we want the migration to do.
+We simply need to invoke the task with a `snake_case` version of the module name that we want. Preferably, the name will describe what we want the migration to do.
 
 ```console
 mix ecto.gen.migration add_comments_table
@@ -773,6 +531,7 @@ $ mix ecto.gen.migration -r OurCustom.Repo add_users
 * creating priv/repo/migrations
 * creating priv/repo/migrations/20150318172927_add_users.exs
 ```
+
 For more information on how to modify your database schema please refer to the
 ecto's migration dsl [ecto migration docs](https://hexdocs.pm/ecto_sql/Ecto.Migration.html).
 For example, to alter an existing schema see the documentation on ecto’s
@@ -797,8 +556,8 @@ Here's what the `schema_migrations` table looks like.
 
 ```console
 hello_dev=# select * from schema_migrations;
-version     |     inserted_at
-----------------+---------------------
+version        |     inserted_at
+---------------+---------------------
 20150317170448 | 2015-03-17 21:07:26
 20150318001628 | 2015-03-18 01:45:00
 (2 rows)
@@ -851,7 +610,7 @@ $ mix ecto.rollback
 
 `ecto.rollback` will handle the same options as `ecto.migrate`, so `-n`, `--step`, `-v`, and `--to` will behave as they do for `ecto.migrate`.
 
-## Creating Our Own Mix Tasks
+## Creating our own Mix task
 
 As we've seen throughout this guide, both mix itself and the dependencies we bring in to our application provide a number of really useful tasks for free. Since neither of these could possibly anticipate all our individual application's needs, mix allows us to create our own custom tasks. That's exactly what we are going to do now.
 
@@ -870,11 +629,11 @@ defmodule Mix.Tasks.Hello.Greeting do
   @shortdoc "Sends a greeting to us from Hello Phoenix"
 
   @moduledoc """
-    This is where we would put any long form documentation or doctests.
+  This is where we would put any long form documentation or doctests.
   """
 
   def run(_args) do
-    Mix.shell.info("Greetings from the Hello Phoenix Application!")
+    Mix.shell().info("Greetings from the Hello Phoenix Application!")
   end
 
   # We can define other functions as needed here.
@@ -883,16 +642,16 @@ end
 
 Let's take a quick look at the moving parts involved in a working mix task.
 
-The first thing we need to do is name our module. In order to properly namespace it, we begin with `Mix.Tasks`. We'd like to invoke this as `mix hello.greeting`, so we complete the module name with
+The first thing we need to do is name our module. All tasks must be defined in `Mix.Tasks` namespace. We'd like to invoke this as `mix hello.greeting`, so we complete the module name with
 `Hello.Greeting`.
 
-The `use Mix.Task` line clearly brings in functionality from mix that makes this module behave as a mix task.
+The `use Mix.Task` line brings in functionality from Mix that makes this module behave as a mix task.
 
 The `@shortdoc` module attribute holds a string which will describe our task when users invoke `mix help`.
 
 `@moduledoc` serves the same function that it does in any module. It's where we can put long-form documentation and doctests, if we have any.
 
-The `run/1` function is the critical heart of any mix task. It's the function that does all the work when users invoke our task. In ours, all we do is send a greeting from our app, but we can implement our `run/1` function to do whatever we need it to. Note that `Mix.shell.info/1` is the preferred way to print text back out to the user.
+The `run/1` function is the critical heart of any Mix task. It's the function that does all the work when users invoke our task. In ours, all we do is send a greeting from our app, but we can implement our `run/1` function to do whatever we need it to. Note that `Mix.shell().info/1` is the preferred way to print text back out to the user.
 
 Of course, our task is just a module, so we can define other private functions as needed to support our `run/1` function.
 
@@ -907,7 +666,7 @@ Generated hello.app
 Now our new task should be visible to `mix help`.
 
 ```console
-$ mix help | grep hello
+$ mix help --search hello
 mix hello.greeting # Sends a greeting to us from Hello Phoenix
 ```
 
@@ -928,7 +687,7 @@ If you want to make your new mix task to use your application's infrastructure, 
   . . .
   def run(_args) do
     Mix.Task.run("app.start")
-    Mix.shell.info("Now I have access to Repo and other goodies!")
+    Mix.shell().info("Now I have access to Repo and other goodies!")
   end
   . . .
 ```

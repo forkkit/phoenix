@@ -112,6 +112,17 @@ defmodule Phoenix.ConnTest do
 
   @doc false
   defmacro __using__(_) do
+    IO.warn """
+    Using Phoenix.ConnTest is deprecated, instead of:
+
+        use Phoenix.ConnTest
+
+    do:
+
+        import Plug.Conn
+        import Phoenix.ConnTest
+    """, Macro.Env.stacktrace(__CALLER__)
+
     quote do
       import Plug.Conn
       import Phoenix.ConnTest
@@ -234,6 +245,12 @@ defmodule Phoenix.ConnTest do
 
   defp from_set_to_sent(%Conn{state: :set} = conn), do: Conn.send_resp(conn)
   defp from_set_to_sent(conn), do: conn
+
+  @doc """
+  Inits a session used exclusively for testing.
+  """
+  @spec init_test_session(Conn.t, map | keyword) :: Conn.t
+  defdelegate init_test_session(conn, session), to: Plug.Test
 
   @doc """
   Puts a request cookie.
@@ -369,7 +386,7 @@ defmodule Phoenix.ConnTest do
   end
 
   @doc """
-  Asserts the given status code, that we have an text response and
+  Asserts the given status code, that we have a text response and
   returns the response body if one was set or sent.
 
   ## Examples
@@ -384,7 +401,7 @@ defmodule Phoenix.ConnTest do
   end
 
   @doc """
-  Asserts the given status code, that we have an json response and
+  Asserts the given status code, that we have a json response and
   returns the decoded JSON response if one was set or sent.
 
   ## Examples
@@ -442,17 +459,17 @@ defmodule Phoenix.ConnTest do
   This emulates behaviour performed by browsers where cookies
   returned in the response are available in following requests.
 
-  By default, only the headers "accept" and "authorization" are
-  recycled. However, a custom set of headers can be specified by
-  passing a list of strings representing its names as the second
-  argument of the function.
+  By default, only the headers "accept", "accept-language", and
+  "authorization" are recycled. However, a custom set of headers
+  can be specified by passing a list of strings representing its
+  names as the second argument of the function.
 
   Note `recycle/1` is automatically invoked when dispatching
   to the endpoint, unless the connection has already been
   recycled.
   """
   @spec recycle(Conn.t, [String.t]) :: Conn.t
-  def recycle(conn, headers \\ ~w(accept authorization)) do
+  def recycle(conn, headers \\ ~w(accept accept-language authorization)) do
     build_conn()
     |> Map.put(:host, conn.host)
     |> Plug.Test.recycle_cookies(conn)
@@ -487,7 +504,7 @@ defmodule Phoenix.ConnTest do
 
   Note the use of `get("/")` following `bypass_through` in the examples below.
   To execute the plug pipelines, you must issue a request against the router.
-  Most often, you can simpy send a GET request against the root path, but you
+  Most often, you can simply send a GET request against the root path, but you
   may also specify a different method or path which your pipelines may operate
   against.
 
@@ -542,7 +559,7 @@ defmodule Phoenix.ConnTest do
   end
 
   @doc """
-  Calls the Endpoint and and the given Router pipelines.
+  Calls the Endpoint and the given Router pipelines.
 
   See `bypass_through/1`.
   """
@@ -654,7 +671,7 @@ defmodule Phoenix.ConnTest do
     try do
       {:ok, func.()}
     catch
-      kind, error -> {:error, {kind, error, System.stacktrace()}}
+      kind, error -> {:error, {kind, error, __STACKTRACE__}}
     end
   end
 end

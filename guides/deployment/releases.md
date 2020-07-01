@@ -37,10 +37,15 @@ Then load dependencies to compile code and assets:
 $ mix deps.get --only prod
 $ MIX_ENV=prod mix compile
 
+# Install / update  JavaScript dependencies
+$ npm install --prefix ./assets
+
 # Compile assets
 $ npm run deploy --prefix ./assets
 $ mix phx.digest
 ```
+
+*Note:* the `--prefix` flag on `npm` may not work on Windows. If so, replace the first command by `cd assets && npm run deploy && cd ..`.
 
 And now run `mix release`:
 
@@ -92,9 +97,7 @@ However, in many cases, we don't want to set the values for `SECRET_KEY_BASE` an
 
 1. Rename `config/prod.secret.exs` to `config/releases.exs`
 
-2. Change `use Mix.Config` inside the new `config/releases.exs` file to `import Config` (if you want, you can replace all uses of `use Mix.Config` by `import Config`, as the latter replaces the former)
-
-3. Change `config/prod.exs` to no longer call `import_config "prod.secret.exs"` at the bottom
+2. Change `config/prod.exs` to no longer call `import_config "prod.secret.exs"` at the bottom
 
 Now if you assemble another release, you should see this:
 
@@ -172,10 +175,9 @@ Here is an example Docker file to run at the root of your application covering a
 FROM elixir:1.9.0-alpine AS build
 
 # install build dependencies
-RUN apk add --update build-base npm git
+RUN apk add --no-cache build-base npm git python
 
 # prepare build dir
-RUN mkdir /app
 WORKDIR /app
 
 # install hex + rebar
@@ -188,35 +190,38 @@ ENV MIX_ENV=prod
 # install mix dependencies
 COPY mix.exs mix.lock ./
 COPY config config
-RUN mix deps.get
-RUN mix deps.compile
+RUN mix do deps.get, deps.compile
 
 # build assets
+COPY assets/package.json assets/package-lock.json ./assets/
+RUN npm --prefix ./assets ci --progress=false --no-audit --loglevel=error
+
+COPY priv priv
 COPY assets assets
-RUN cd assets && npm install && npm run deploy
+RUN npm run --prefix ./assets deploy
 RUN mix phx.digest
 
-# build project
-COPY priv priv
+# compile and build release
 COPY lib lib
-RUN mix compile
-
-# build release
-COPY rel rel
-RUN mix release
+# uncomment COPY if rel/ exists
+# COPY rel rel
+RUN mix do compile, release
 
 # prepare release image
 FROM alpine:3.9 AS app
-RUN apk add --update bash openssl
+RUN apk add --no-cache openssl ncurses-libs
 
-RUN mkdir /app
 WORKDIR /app
 
-COPY --from=build /app/_build/prod/rel/my_app ./
-RUN chown -R nobody: /app
-USER nobody
+RUN chown nobody:nobody /app
+
+USER nobody:nobody
+
+COPY --from=build --chown=nobody:nobody /app/_build/prod/rel/my_app ./
 
 ENV HOME=/app
+
+CMD ["bin/my_app", "start"]
 ```
 
 At the end, you will have an application in `/app` ready to run as `bin/my_app start`.

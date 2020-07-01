@@ -106,6 +106,7 @@ defmodule Phoenix.Template do
   ]
 
   @default_pattern "*"
+  @private_assigns [:__phx_template_not_found__]
 
   defmodule UndefinedError do
     @moduledoc """
@@ -116,7 +117,7 @@ defmodule Phoenix.Template do
     def message(exception) do
       "Could not render #{inspect exception.template} for #{inspect exception.module}, "
         <> "please define a matching clause for render/2 or define a template at "
-        <> "#{inspect Path.relative_to_cwd exception.root}. "
+        <> "#{inspect Path.join(Path.relative_to_cwd(exception.root), exception.pattern)}. "
         <> available_templates(exception.available)
         <> "\nAssigns:\n\n"
         <> inspect(exception.assigns)
@@ -334,7 +335,7 @@ defmodule Phoenix.Template do
   def raise_template_not_found(view_module, template, assigns) do
     {root, pattern, names} = view_module.__templates__()
     raise UndefinedError,
-      assigns: assigns,
+      assigns: Map.drop(assigns, @private_assigns),
       available: names,
       template: template,
       root: root,

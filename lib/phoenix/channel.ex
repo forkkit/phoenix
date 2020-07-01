@@ -167,11 +167,15 @@ defmodule Phoenix.Channel do
 
   `terminate/2`, however, won't be invoked in case of errors nor in
   case of exits. This is the same behaviour as you find in Elixir
-  abstractions like `GenServer` and others. Typically speaking, if you
-  want to clean something up, it is better to monitor your channel
-  process and do the clean up from another process.  Similar to GenServer,
+  abstractions like `GenServer` and others. Similar to `GenServer`,
   it would also be possible `:trap_exit` to guarantee that `terminate/2`
   is invoked. This practice is not encouraged though.
+
+  Typically speaking, if you want to clean something up, it is better to
+  monitor your channel process and do the clean up from another process.
+  All channel callbacks including `join/3` are called from within the
+  channel process. Therefore, `self()` in any of them returns the PID to
+  be monitored.
 
   ## Exit reasons when stopping a channel
 
@@ -198,7 +202,7 @@ defmodule Phoenix.Channel do
   ## Subscribing to external topics
 
   Sometimes you may need to programmatically subscribe a socket to external
-  topics in addition to the the internal `socket.topic`. For example,
+  topics in addition to the internal `socket.topic`. For example,
   imagine you have a bidding system where a remote client dynamically sets
   preferences on products they want to receive bidding notifications on.
   Instead of requiring a unique channel process and topic per
@@ -339,7 +343,7 @@ defmodule Phoenix.Channel do
   @doc """
   Handle regular Elixir process messages.
 
-  See `GenServer.handle_info/2`.
+  See `c:GenServer.handle_info/2`.
   """
   @callback handle_info(msg :: term, socket :: Socket.t()) ::
               {:noreply, Socket.t()}
@@ -348,7 +352,7 @@ defmodule Phoenix.Channel do
   @doc """
   Handle regular GenServer call messages.
 
-  See `GenServer.handle_call/3`.
+  See `c:GenServer.handle_call/3`.
   """
   @callback handle_call(msg :: term, from :: {pid, tag :: term}, socket :: Socket.t()) ::
               {:reply, response :: term, Socket.t()}
@@ -358,7 +362,7 @@ defmodule Phoenix.Channel do
   @doc """
   Handle regular GenServer cast messages.
 
-  See `GenServer.handle_cast/2`.
+  See `c:GenServer.handle_cast/2`.
   """
   @callback handle_cast(msg :: term, socket :: Socket.t()) ::
               {:noreply, Socket.t()}
@@ -373,7 +377,7 @@ defmodule Phoenix.Channel do
   @doc """
   Invoked when the channel process is about to exit.
 
-  See `GenServer.terminate/2`.
+  See `c:GenServer.terminate/2`.
   """
   @callback terminate(
               reason :: :normal | :shutdown | {:shutdown, :left | :closed | term},
@@ -402,7 +406,7 @@ defmodule Phoenix.Channel do
       @phoenix_shutdown Keyword.get(opts, :shutdown, 5000)
 
       import unquote(__MODULE__)
-      import Phoenix.Socket, only: [assign: 3]
+      import Phoenix.Socket, only: [assign: 3, assign: 2]
 
       def child_spec(init_arg) do
         %{
